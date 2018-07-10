@@ -48,6 +48,7 @@
   <ItemGroup>
     <Compile Include="CommandParser.cs" />
     <Compile Include="Frame.cs" />
+    <Compile Include="FrameHelper.cs" />
     <Compile Include="GZip.cs" />
     <Compile Include="Parameters.cs" />
     <Compile Include="Program.cs" />

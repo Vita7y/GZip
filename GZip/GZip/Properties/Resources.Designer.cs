@@ -61,6 +61,15 @@ namespace GZip.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to File processing was started.
+        /// </summary>
+        internal static string CannNotStartProcessAgain {
+            get {
+                return ResourceManager.GetString("CannNotStartProcessAgain", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Please enter arguments up to the following pattern: [compress/decompress] [Source file] [Destination file].
         /// </summary>
         internal static string ErrorArgsIsEmpty {
@@ -133,11 +142,29 @@ namespace GZip.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Operation is not started.
+        /// </summary>
+        internal static string OperationIsNotStarted {
+            get {
+                return ResourceManager.GetString("OperationIsNotStarted", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Validation passed..
         /// </summary>
         internal static string ParameterInstalled {
             get {
                 return ResourceManager.GetString("ParameterInstalled", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The type of operation is not set.
+        /// </summary>
+        internal static string UnknownOperation {
+            get {
+                return ResourceManager.GetString("UnknownOperation", resourceCulture);
             }
         }
     }

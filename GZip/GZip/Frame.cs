@@ -1,23 +1,57 @@
-﻿namespace GZip
+﻿using System.Runtime.InteropServices;
+
+namespace GZip
 {
-    public struct Frame
+    [StructLayout(LayoutKind.Sequential)]
+    public struct FrameHeader
     {
-        public Frame(int id, byte[] buf)
+        public FrameHeader(int headerId, int frameId, long position, int dataLegth)
         {
-            Id = id;
-            Input = buf;
-            Out = null;
+            HeaderId = headerId;
+            Id = frameId;
+            Position = position;
+            DataLength = dataLegth;
         }
+
+        public int HeaderId { get; }
 
         public int Id { get; }
 
-        public byte[] Input { get; }
+        public long Position { get; }
 
-        public byte[] Out { get; private set; }
+        public int DataLength { get; }
+    }
 
-        public void SetOutBuf(byte[] buf)
+    [StructLayout(LayoutKind.Sequential)]
+    public struct Frame
+    {
+        public Frame(FrameHeader header, byte[] buf)
         {
-            Out = buf;
+            Header = header;
+            Data = buf;
         }
+
+        public FrameHeader Header { get; }
+
+        public byte[] Data { get; }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct WindowHeader
+    {
+        public WindowHeader(int version, int id, long length, int framesCount)
+        {
+            Version = version;
+            Id = id;
+            SourceLength = length;
+            FramesCount = framesCount;
+        }
+        public int Id { get; }
+
+        public long SourceLength { get; }
+
+        public int Version { get; }
+
+        public int FramesCount { get; }
     }
 }

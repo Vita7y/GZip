@@ -20,6 +20,8 @@ namespace GZip
 
         }
 
+        public bool IsWork { get; }
+
         private void Process()
         {
             while (true)
