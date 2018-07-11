@@ -36,6 +36,7 @@
     <StartupObject>GZip.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -59,7 +60,6 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="SimpleThreadSafeStack.cs" />
-    <Compile Include="ThreadsManager.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

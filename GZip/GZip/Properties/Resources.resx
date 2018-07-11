@@ -141,11 +141,17 @@
   <data name="ErrorSecondArg" xml:space="preserve">
     <value>No source file name was specified.</value>
   </data>
+  <data name="MemoryNoEnough" xml:space="preserve">
+    <value>Memory not enough</value>
+  </data>
   <data name="OperationCancelling" xml:space="preserve">
     <value>Opertion is cancelling</value>
   </data>
   <data name="OperationIsNotStarted" xml:space="preserve">
     <value>Operation is not started</value>
+  </data>
+  <data name="OperationWasStopped" xml:space="preserve">
+    <value>Operation was stopped</value>
   </data>
   <data name="ParameterInstalled" xml:space="preserve">
     <value>Validation passed.</value>

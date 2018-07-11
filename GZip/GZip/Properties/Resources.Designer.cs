@@ -133,6 +133,15 @@ namespace GZip.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Memory not enough.
+        /// </summary>
+        internal static string MemoryNoEnough {
+            get {
+                return ResourceManager.GetString("MemoryNoEnough", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Opertion is cancelling.
         /// </summary>
         internal static string OperationCancelling {
@@ -147,6 +156,15 @@ namespace GZip.Properties {
         internal static string OperationIsNotStarted {
             get {
                 return ResourceManager.GetString("OperationIsNotStarted", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Operation was stopped.
+        /// </summary>
+        internal static string OperationWasStopped {
+            get {
+                return ResourceManager.GetString("OperationWasStopped", resourceCulture);
             }
         }
         

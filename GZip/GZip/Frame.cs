@@ -39,11 +39,11 @@ namespace GZip
     [StructLayout(LayoutKind.Sequential)]
     public struct WindowHeader
     {
-        public WindowHeader(int version, int id, long length, int framesCount)
+        public WindowHeader(int version, int id, long sourceLength, int framesCount)
         {
             Version = version;
             Id = id;
-            SourceLength = length;
+            SourceLength = sourceLength;
             FramesCount = framesCount;
         }
         public int Id { get; }

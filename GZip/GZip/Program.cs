@@ -12,7 +12,7 @@ namespace GZip
             var cmd = new CommandValidator(parameters);
 
             var resValidation = cmd.ParameterValidationAndSetup(args);
-            if (resValidation.Item1 != CommandValidator.ResultType.Success)
+            if (resValidation.Item1 != ResultType.Success)
             {
                 Console.WriteLine(resValidation.Item2);
                 return;
@@ -37,7 +37,7 @@ namespace GZip
             {
                 Console.WriteLine(Properties.Resources.OperationCancelling);
                 args.Cancel = true;
-                _compressor.Cancel();
+                _compressor.Stop();
 
             }
         }

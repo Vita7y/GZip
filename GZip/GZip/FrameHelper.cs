@@ -41,18 +41,23 @@ namespace GZip
         {
             var sizeOfFrameHeader = Marshal.SizeOf(typeof(WindowHeader));
             var frameHeaderBuf = new byte[sizeOfFrameHeader];
-            stream.Read(frameHeaderBuf, (int)stream.Position, sizeOfFrameHeader);
+            stream.Read(frameHeaderBuf, 0, sizeOfFrameHeader);
             return frameHeaderBuf.ReadStruct<WindowHeader>();
+        }
+
+        public static void WriteWindowHeaderToStream(Stream stream, WindowHeader header)
+        {
+            var bufWindowHeader = header.StructToByteArray();
+            stream.Write(bufWindowHeader, 0, bufWindowHeader.Length);
         }
 
         public static Frame CreateUncompressedFrameFromStream(Stream stream, int lengthRead, int headerId, int frameId)
         {
             var buf = new byte[lengthRead];
             var position = stream.Position;
-            stream.Read(buf, (int)stream.Position, lengthRead);
+            stream.Read(buf, 0, lengthRead);
             return new Frame(new FrameHeader(headerId, frameId, position, buf.Length), buf);
         }
-
 
         public static Frame ReadCompressedFrameFromStream(Stream stream)
         {
@@ -65,16 +70,10 @@ namespace GZip
             return new Frame(frameHeader, frameDataBuf);
         }
 
-        public static void WriteWindowHeaderFromStream(Stream stream, WindowHeader header)
-        {
-            var bufWindowHeader = header.StructToByteArray();
-            stream.Write(bufWindowHeader, (int)stream.Position, bufWindowHeader.Length);
-        }
-
         public static void WriteFrameToStream(Stream stream, Frame frame)
         {
             var bufFrame = frame.StructToByteArray();
-            stream.Write(bufFrame, (int)stream.Position, bufFrame.Length);
+            stream.Write(bufFrame, 0, bufFrame.Length);
         }
 
 

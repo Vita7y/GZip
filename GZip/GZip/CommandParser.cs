@@ -12,13 +12,6 @@ namespace GZip
             _parameters = parameters;
         }
 
-        public enum ResultType
-        {
-            Unknown,
-            Error,
-            Success
-        }
-
         public Tuple<ResultType, string> ParameterValidationAndSetup(string[] args)
         {
 
@@ -68,5 +61,12 @@ namespace GZip
             _parameters.OutputFileName = output;
             _parameters.Operation = type;
         }
+    }
+
+    public enum ResultType
+    {
+        Unknown,
+        Error,
+        Success
     }
 }
