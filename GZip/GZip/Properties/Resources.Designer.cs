@@ -185,5 +185,14 @@ namespace GZip.Properties {
                 return ResourceManager.GetString("UnknownOperation", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Work is done.
+        /// </summary>
+        internal static string WorkIsDone {
+            get {
+                return ResourceManager.GetString("WorkIsDone", resourceCulture);
+            }
+        }
     }
 }

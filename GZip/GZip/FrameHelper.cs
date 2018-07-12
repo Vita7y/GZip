@@ -1,6 +1,8 @@
 ﻿using System;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace GZip
 {
@@ -27,12 +29,25 @@ namespace GZip
             return temp;
         }
 
-        public static byte[] StructToByteArray<T>(this T inputType) where T: struct 
+        public static byte[] StructToByteArray(this Frame inputType)
         {
-            byte[] buffer = new byte[Marshal.SizeOf(inputType)];
-            IntPtr ptr = Marshal.AllocHGlobal(buffer.Length);
+            var len = Marshal.SizeOf(inputType.Header);
+            var buffer = new byte[len + inputType.Data.Length];
+            var ptr = Marshal.AllocHGlobal(buffer.Length);
             Marshal.StructureToPtr(inputType, ptr, true);
             Marshal.Copy(ptr, buffer, 0, buffer.Length);
+            Marshal.FreeHGlobal(ptr);
+            Array.Copy(inputType.Data, 0, buffer, len, inputType.Data.Length);
+            return buffer;
+        }
+
+        public static byte[] StructToByteArray<T>(this T inputType) where T : struct
+        {
+            var len = Marshal.SizeOf(inputType);
+            var buffer = new byte[len];
+            var ptr = Marshal.AllocHGlobal(len);
+            Marshal.StructureToPtr(inputType, ptr, true);
+            Marshal.Copy(ptr, buffer, 0, len);
             Marshal.FreeHGlobal(ptr);
             return buffer;
         }
@@ -63,10 +78,10 @@ namespace GZip
         {
             var sizeOfFrameHeader = Marshal.SizeOf(typeof(FrameHeader));
             var frameHeaderBuf = new byte[sizeOfFrameHeader];
-            stream.Read(frameHeaderBuf, (int)stream.Position, sizeOfFrameHeader);
+            stream.Read(frameHeaderBuf, 0, sizeOfFrameHeader);
             var frameHeader = frameHeaderBuf.ReadStruct<FrameHeader>();
             var frameDataBuf = new byte[frameHeader.DataLength];
-            stream.Read(frameDataBuf, (int)stream.Position, frameDataBuf.Length);
+            stream.Read(frameDataBuf, 0, frameDataBuf.Length);
             return new Frame(frameHeader, frameDataBuf);
         }
 

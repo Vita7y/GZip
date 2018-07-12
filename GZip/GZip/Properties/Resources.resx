@@ -159,4 +159,7 @@
   <data name="UnknownOperation" xml:space="preserve">
     <value>The type of operation is not set</value>
   </data>
+  <data name="WorkIsDone" xml:space="preserve">
+    <value>Work is done</value>
+  </data>
 </root>

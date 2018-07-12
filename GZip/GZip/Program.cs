@@ -18,12 +18,13 @@ namespace GZip
                 return;
             }
 
-            _compressor = new GZip(parameters);
-            _compressor.ShowMessage += OnShowMessage;
-
-            Console.CancelKeyPress += CancelKeyPress;
-
-            _compressor.Start();
+            using (_compressor = new GZip(parameters))
+            {
+                Console.CancelKeyPress += CancelKeyPress;
+                _compressor.ShowMessage += OnShowMessage;
+                _compressor.Start();
+                _compressor.WhaitToEnd();
+            }
         }
 
         static void OnShowMessage(object sender, MessageEventArgs args)

@@ -16,9 +16,9 @@ namespace GZip
 
         public enum OperationType
         {
-            Unknown,
-            Compress,
-            Decompress
+            UNKNOWN,
+            COMPRESS,
+            DECOMPRESS
         }
 
         public string InputFileName { get; set; }

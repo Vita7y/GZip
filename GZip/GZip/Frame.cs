@@ -22,7 +22,7 @@ namespace GZip
         public int DataLength { get; }
     }
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
     public struct Frame
     {
         public Frame(FrameHeader header, byte[] buf)
@@ -31,9 +31,10 @@ namespace GZip
             Data = buf;
         }
 
-        public FrameHeader Header { get; }
+        public FrameHeader Header;
 
-        public byte[] Data { get; }
+        [MarshalAs(UnmanagedType.ByValArray)]
+        public byte[] Data;
     }
 
     [StructLayout(LayoutKind.Sequential)]
