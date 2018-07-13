@@ -3,50 +3,54 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Threading;
+using GZip.Properties;
 using Microsoft.VisualBasic.Devices;
 
 namespace GZip
 {
     public class GZip : IDisposable
     {
+        private readonly object _locker = new object();
         private readonly Parameters _parameters;
         private FileStream _input;
         private FileStream _output;
-        private IGZip _zip;
-
-        private Thread[] _workThreads;
         private SimpleThreadSafeQueue<Frame> _queueInput;
         private SimpleThreadSafeQueue<Frame> _queueOutput;
-        private readonly object _locker = new object();
         private EventWaitHandle _whaitHandle;
+        private EventWaitHandle _whaitMemoryHandle;
+        private Thread[] _workThreads;
+        private IGZip _zip;
 
         public GZip(Parameters parameters)
         {
             _parameters = parameters;
         }
 
-        public event Message ShowMessage;
-
-        protected virtual void OnShowMessage(MessageEventArgs args)
+        public void Dispose()
         {
-            ShowMessage?.Invoke(this, args);
+            Stop();
+            _input?.Dispose();
+            _output?.Dispose();
+            _whaitHandle?.Dispose();
+            GC.SuppressFinalize(this);
         }
 
-        public void Start()
+        public event Message ShowMessage;
+
+        public bool Start()
         {
             lock (_locker)
             {
-                _whaitHandle = new AutoResetEvent(false);
                 if (_workThreads != null)
                 {
-                    OnShowMessage(new MessageEventArgs(Properties.Resources.CannNotStartProcessAgain));
-                    return;
+                    OnShowMessage(new MessageEventArgs(Resources.OperationWasStarted));
+                    return false;
                 }
 
                 try
                 {
-                    _output = new FileStream(_parameters.OutputFileName, FileMode.CreateNew);
                     _input = new FileStream(_parameters.InputFileName, FileMode.Open);
+                    _output = new FileStream(_parameters.OutputFileName, FileMode.CreateNew);
 
                     switch (_parameters.Operation)
                     {
@@ -57,8 +61,8 @@ namespace GZip
                             _zip = new GZipDecompress(_input, _output);
                             break;
                         default:
-                            OnShowMessage(new MessageEventArgs(Properties.Resources.UnknownOperation));
-                            break;
+                            OnShowMessage(new MessageEventArgs(Resources.UnknownOperation));
+                            return false;
                     }
 
                     _queueInput = new SimpleThreadSafeQueue<Frame>();
@@ -67,23 +71,26 @@ namespace GZip
                     _workThreads = new Thread[_parameters.CountOfThreads + 2];
                     _workThreads[0] = new Thread(ReadWork);
                     _workThreads[1] = new Thread(WriteWork);
-                    for (int i = 0; i < _workThreads.Length; i++)
+
+                    _whaitHandle = new AutoResetEvent(false);
+                    _whaitMemoryHandle = new AutoResetEvent(false);
+                    for (var i = 0; i < _workThreads.Length; i++)
                     {
                         if (_workThreads[i] == null)
                             _workThreads[i] = new Thread(ProcessWork);
                         _workThreads[i].Start();
                     }
+
+                    OnShowMessage(new MessageEventArgs(Resources.OperationWasStarted));
+                    return true;
                 }
                 catch (Exception e)
                 {
                     OnShowMessage(new MessageEventArgs(e.Message));
                 }
-            }
-        }
 
-        public void WhaitToEnd()
-        {
-            _whaitHandle.WaitOne();
+                return false;
+            }
         }
 
         public void Stop()
@@ -92,57 +99,89 @@ namespace GZip
             {
                 if (_workThreads == null)
                 {
-                    OnShowMessage(new MessageEventArgs(Properties.Resources.OperationIsNotStarted));
+                    _whaitHandle?.Set();
+                    OnShowMessage(new MessageEventArgs(Resources.OperationIsNotStarted));
                     return;
                 }
 
+                _zip.Cancel();
+                _whaitMemoryHandle.Set();
                 _output.Flush();
 
                 foreach (var workThread in _workThreads)
-                {
                     if (workThread.IsAlive)
                         workThread.Abort();
-                }
 
-                _whaitHandle.Set();
+                OnShowMessage(new MessageEventArgs(Resources.WorkIsDone));
+                _whaitHandle?.Set();
             }
         }
 
-        public void Dispose()
+        public void WhaitToEnd()
         {
-            Stop();
-            _input?.Dispose();
-            _output?.Dispose();
-            _whaitHandle.Dispose();
-            GC.SuppressFinalize(this);
+            _whaitHandle?.WaitOne();
         }
 
-        private bool IsMemoryEnough(Frame frame)
+        protected virtual void OnShowMessage(MessageEventArgs args)
         {
-            var len = frame.SizeOf();
-            return (new ComputerInfo().AvailablePhysicalMemory) > (ulong)(_parameters.BlockLength * 3 + len);
+            ShowMessage?.Invoke(this, args);
+        }
+
+        private bool IsMemoryEnough()
+        {
+            var freeMemry = new ComputerInfo().AvailablePhysicalMemory;
+            var minLevelMemory = (ulong) (_parameters.BlockLength * 10);
+            if (IntPtr.Size == 4)
+            {
+                // 32-bit
+                var memory = GC.GetTotalMemory(true);
+                freeMemry = (freeMemry > (ulong) (int.MaxValue - memory)) ? (ulong) (int.MaxValue - memory) : freeMemry;
+            }
+            return freeMemry > minLevelMemory;
         }
 
         private void ProcessWork()
         {
             while (true)
             {
-                var frame = _queueInput.Pop();
+                var frame = _queueInput.Dequeue();
                 if (frame.Data == null)
                 {
-                    _queueInput.Push(frame);
+                    _queueInput.Enqueue(frame);
                     return;
                 }
-                _queueOutput.Push(_zip.Process(frame));
+
+                _queueOutput.Enqueue(_zip.Process(frame));
             }
+        }
+
+        private void ReadWork()
+        {
+            if (!IsMemoryEnough())
+            {
+                _zip.Cancel();
+                _queueInput.Enqueue(default(Frame));
+                OnShowMessage(new MessageEventArgs(Resources.ErrorMemoryNotEnough));
+                OnShowMessage(new MessageEventArgs(Resources.OperationWasStopped));
+                return;
+            }
+
+            foreach (var frame in _zip.Read())
+            {
+                if (!IsMemoryEnough())
+                    _whaitMemoryHandle.WaitOne();
+                _queueInput.Enqueue(frame);
+            }
+
+            _queueInput.Enqueue(default(Frame));
         }
 
         private void WriteWork()
         {
-            int writeFrameCount = 0;
+            var writeFrameCount = 0;
             while (true)
             {
-                var frame = _queueOutput.Pop();
+                var frame = _queueOutput.Dequeue();
                 _zip.Write(frame);
                 writeFrameCount++;
                 if (writeFrameCount == _zip.FramesCount)
@@ -150,22 +189,12 @@ namespace GZip
                     _whaitHandle.Set();
                     return;
                 }
-            }
-        }
 
-        private void ReadWork()
-        {
-            foreach (var frame in _zip.Read())
-            {
-                if (!IsMemoryEnough(frame))
+                if (IsMemoryEnough())
                 {
-                    OnShowMessage(new MessageEventArgs(Properties.Resources.MemoryNoEnough));
-                    OnShowMessage(new MessageEventArgs(Properties.Resources.OperationWasStopped));
-                    return;
+                    _whaitMemoryHandle.Set();
                 }
-                _queueInput.Push(frame);
             }
-            _queueInput.Push(default(Frame));
         }
     }
 
@@ -183,18 +212,20 @@ namespace GZip
 
     internal interface IGZip
     {
-        int FramesCount { get; }
+        long FramesCount { get; }
+        long ReadFramesCount { get; }
         IEnumerable<Frame> Read();
         void Write(Frame frame);
         Frame Process(Frame frame);
+        void Cancel();
     }
 
-    sealed class GZipCompress : IGZip
+    internal sealed class GZipCompress : IGZip
     {
-        private readonly Stream _streamToRead;
-        private readonly Stream _streamToWrite;
         private readonly int _frameLength;
         private readonly int _headerId;
+        private readonly Stream _streamToRead;
+        private readonly Stream _streamToWrite;
 
         public GZipCompress(Stream toRead, Stream toWrite, int frameLength, int headerId)
         {
@@ -203,13 +234,19 @@ namespace GZip
             _frameLength = frameLength;
             _headerId = headerId;
 
-            FramesCount = (int)_streamToRead.Length / _frameLength + ((_streamToRead.Length % _frameLength) > 0 ? 1 : 0);
+            FramesCount = _streamToRead.Length / _frameLength + (_streamToRead.Length % _frameLength > 0 ? 1 : 0);
             var header = new WindowHeader(1, 1, _streamToRead.Length, FramesCount);
             FrameHelper.WriteWindowHeaderToStream(_streamToWrite, header);
         }
 
-        public int FramesCount { get; }
-        public int ReadFramesCount { get; private set; }
+        public long ReadFramesCount { get; private set; }
+
+        public long FramesCount { get; private set; }
+
+        public void Cancel()
+        {
+            FramesCount = ReadFramesCount - 1;
+        }
 
         public Frame Process(Frame frame)
         {
@@ -221,7 +258,8 @@ namespace GZip
                 }
 
                 var data = memoryStream.ToArray();
-                return new Frame(new FrameHeader(frame.Header.HeaderId, frame.Header.Id, frame.Header.Position, data.Length), data);
+                return new Frame(
+                    new FrameHeader(frame.Header.HeaderId, frame.Header.Id, frame.Header.Position, data.Length), data);
             }
         }
 
@@ -234,13 +272,17 @@ namespace GZip
         {
             while (_streamToRead.Position < _streamToRead.Length)
             {
-                int needToRead = (int)(((_streamToRead.Length - _streamToRead.Position) > _frameLength) ? _frameLength : (_streamToRead.Length - _streamToRead.Position));
+                if (ReadFramesCount >= FramesCount)
+                    break;
+                int needToRead = (int) (((_streamToRead.Length - _streamToRead.Position) > _frameLength)
+                    ? _frameLength
+                    : _streamToRead.Length - _streamToRead.Position);
                 yield return FrameHelper.CreateUncompressedFrameFromStream(_streamToRead, needToRead, _headerId, ReadFramesCount++);
             }
         }
     }
 
-    sealed class GZipDecompress : IGZip
+    internal sealed class GZipDecompress : IGZip
     {
         private readonly Stream _streamRead;
         private readonly Stream _streamWrite;
@@ -255,7 +297,9 @@ namespace GZip
             _streamWrite.SetLength(header.SourceLength);
         }
 
-        public int FramesCount { get; private set; }
+        public long FramesCount { get; private set; }
+
+        public long ReadFramesCount { get; private set; }
 
         public Frame Process(Frame frame)
         {
@@ -269,7 +313,9 @@ namespace GZip
                     }
 
                     var data = memoryDecompressedStream.ToArray();
-                    return new Frame(new FrameHeader(frame.Header.HeaderId, frame.Header.Id, frame.Header.Position, data.Length), data);
+                    return new Frame(
+                        new FrameHeader(frame.Header.HeaderId, frame.Header.Id, frame.Header.Position, data.Length),
+                        data);
                 }
             }
         }
@@ -284,8 +330,17 @@ namespace GZip
         {
             while (_streamRead.Position < _streamRead.Length)
             {
-                yield return FrameHelper.ReadCompressedFrameFromStream(_streamRead);
+                if (ReadFramesCount >= FramesCount)
+                    break;
+                var frame = FrameHelper.ReadCompressedFrameFromStream(_streamRead);
+                ReadFramesCount++;
+                yield return frame;
             }
+        }
+
+        public void Cancel()
+        {
+            FramesCount = ReadFramesCount - 1;
         }
     }
 }

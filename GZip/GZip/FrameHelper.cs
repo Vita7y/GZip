@@ -1,30 +1,17 @@
 ﻿using System;
 using System.IO;
-using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Runtime.Serialization.Formatters.Binary;
 
 namespace GZip
 {
     public static class FrameHelper
     {
-        public static int SizeOf<T>(this T inputType) where T : struct
+        public static T ReadStruct<T>(this byte[] inputBuff) where T : struct
         {
-            return Marshal.SizeOf(inputType);
-        }
-
-        /// <summary>
-        /// Получение структуры из буфера
-        /// </summary>
-        /// <param name="inputBuff"></param>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public static T ReadStruct<T>(this byte[] inputBuff) where T: struct 
-        {
-            byte[] buffer = new byte[Marshal.SizeOf(typeof(T))];
+            var buffer = new byte[Marshal.SizeOf(typeof(T))];
             Array.Copy(inputBuff, 0, buffer, 0, buffer.Length);
-            GCHandle handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
-            T temp = (T)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(T));
+            var handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+            var temp = (T) Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(T));
             handle.Free();
             return temp;
         }
@@ -34,7 +21,7 @@ namespace GZip
             var len = Marshal.SizeOf(inputType.Header);
             var buffer = new byte[len + inputType.Data.Length];
             var ptr = Marshal.AllocHGlobal(buffer.Length);
-            Marshal.StructureToPtr(inputType, ptr, true);
+            Marshal.StructureToPtr(inputType.Header, ptr, true);
             Marshal.Copy(ptr, buffer, 0, buffer.Length);
             Marshal.FreeHGlobal(ptr);
             Array.Copy(inputType.Data, 0, buffer, len, inputType.Data.Length);
@@ -66,7 +53,7 @@ namespace GZip
             stream.Write(bufWindowHeader, 0, bufWindowHeader.Length);
         }
 
-        public static Frame CreateUncompressedFrameFromStream(Stream stream, int lengthRead, int headerId, int frameId)
+        public static Frame CreateUncompressedFrameFromStream(Stream stream, int lengthRead, int headerId, long frameId)
         {
             var buf = new byte[lengthRead];
             var position = stream.Position;
@@ -90,7 +77,5 @@ namespace GZip
             var bufFrame = frame.StructToByteArray();
             stream.Write(bufFrame, 0, bufFrame.Length);
         }
-
-
     }
 }

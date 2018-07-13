@@ -1,24 +1,20 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace GZip
 {
     public class Parameters
     {
-        public Parameters()
-        {
-            BlockLength = 1048576;
-            CountOfThreads = Environment.ProcessorCount;
-        }
-
         public enum OperationType
         {
             UNKNOWN,
             COMPRESS,
             DECOMPRESS
+        }
+
+        public Parameters()
+        {
+            BlockLength = 1048576;
+            CountOfThreads = Environment.ProcessorCount;
         }
 
         public string InputFileName { get; set; }

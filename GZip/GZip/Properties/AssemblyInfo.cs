@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 // General Information about an assembly is controlled through the following
@@ -32,5 +31,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.18193.0708.1581")]
-[assembly: AssemblyFileVersion("1.18193.0708.1581")]
+[assembly: AssemblyVersion("1.2018.0713.0547")]
+[assembly: AssemblyFileVersion("1.2018.0713.0547")]

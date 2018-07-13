@@ -61,15 +61,6 @@ namespace GZip.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to File processing was started.
-        /// </summary>
-        internal static string CannNotStartProcessAgain {
-            get {
-                return ResourceManager.GetString("CannNotStartProcessAgain", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Please enter arguments up to the following pattern: [compress/decompress] [Source file] [Destination file].
         /// </summary>
         internal static string ErrorArgsIsEmpty {
@@ -106,6 +97,15 @@ namespace GZip.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Memory not enough.
+        /// </summary>
+        internal static string ErrorMemoryNotEnough {
+            get {
+                return ResourceManager.GetString("ErrorMemoryNotEnough", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Destination file already exists. Please indicate the different file name..
         /// </summary>
         internal static string ErrorOutputFileExist {
@@ -133,15 +133,6 @@ namespace GZip.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Memory not enough.
-        /// </summary>
-        internal static string MemoryNoEnough {
-            get {
-                return ResourceManager.GetString("MemoryNoEnough", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Opertion is cancelling.
         /// </summary>
         internal static string OperationCancelling {
@@ -156,6 +147,15 @@ namespace GZip.Properties {
         internal static string OperationIsNotStarted {
             get {
                 return ResourceManager.GetString("OperationIsNotStarted", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to File processing was started.
+        /// </summary>
+        internal static string OperationWasStarted {
+            get {
+                return ResourceManager.GetString("OperationWasStarted", resourceCulture);
             }
         }
         

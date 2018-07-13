@@ -1,12 +1,13 @@
 using System;
+using GZip.Properties;
 
 namespace GZip
 {
-    class Program
+    internal class Program
     {
         private static GZip _compressor;
 
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
             var parameters = new Parameters();
             var cmd = new CommandValidator(parameters);
@@ -22,24 +23,23 @@ namespace GZip
             {
                 Console.CancelKeyPress += CancelKeyPress;
                 _compressor.ShowMessage += OnShowMessage;
-                _compressor.Start();
-                _compressor.WhaitToEnd();
+                if (_compressor.Start())
+                    _compressor.WhaitToEnd();
             }
         }
 
-        static void OnShowMessage(object sender, MessageEventArgs args)
+        private static void OnShowMessage(object sender, MessageEventArgs args)
         {
             Console.WriteLine(args.Message);
         }
 
-        static void CancelKeyPress(object sender, ConsoleCancelEventArgs args)
+        private static void CancelKeyPress(object sender, ConsoleCancelEventArgs args)
         {
             if (args.SpecialKey == ConsoleSpecialKey.ControlC)
             {
-                Console.WriteLine(Properties.Resources.OperationCancelling);
+                Console.WriteLine(Resources.OperationCancelling);
                 args.Cancel = true;
                 _compressor.Stop();
-
             }
         }
     }

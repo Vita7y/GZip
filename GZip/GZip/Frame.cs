@@ -5,7 +5,7 @@ namespace GZip
     [StructLayout(LayoutKind.Sequential)]
     public struct FrameHeader
     {
-        public FrameHeader(int headerId, int frameId, long position, int dataLegth)
+        public FrameHeader(int headerId, long frameId, long position, long dataLegth)
         {
             HeaderId = headerId;
             Id = frameId;
@@ -15,14 +15,14 @@ namespace GZip
 
         public int HeaderId { get; }
 
-        public int Id { get; }
+        public long Id { get; }
 
         public long Position { get; }
 
-        public int DataLength { get; }
+        public long DataLength { get; }
     }
 
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
+    [StructLayout(LayoutKind.Sequential)]
     public struct Frame
     {
         public Frame(FrameHeader header, byte[] buf)
@@ -33,26 +33,26 @@ namespace GZip
 
         public FrameHeader Header;
 
-        [MarshalAs(UnmanagedType.ByValArray)]
         public byte[] Data;
     }
 
     [StructLayout(LayoutKind.Sequential)]
     public struct WindowHeader
     {
-        public WindowHeader(int version, int id, long sourceLength, int framesCount)
+        public WindowHeader(int version, int headerId, long sourceLength, long framesCount)
         {
             Version = version;
-            Id = id;
+            HeaderId = headerId;
             SourceLength = sourceLength;
             FramesCount = framesCount;
         }
-        public int Id { get; }
+
+        public int HeaderId { get; }
 
         public long SourceLength { get; }
 
         public int Version { get; }
 
-        public int FramesCount { get; }
+        public long FramesCount { get; }
     }
 }

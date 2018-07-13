@@ -7,7 +7,7 @@ namespace GZip
     {
         private readonly Queue<T> _stack = new Queue<T>();
 
-        public void Push(T obj)
+        public void Enqueue(T obj)
         {
             lock (_stack)
             {
@@ -16,7 +16,7 @@ namespace GZip
             }
         }
 
-        public T Pop()
+        public T Dequeue()
         {
             lock (_stack)
             {
