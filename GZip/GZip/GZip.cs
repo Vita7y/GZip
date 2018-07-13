@@ -26,13 +26,25 @@ namespace GZip
             _parameters = parameters;
         }
 
+        ~GZip()
+        {
+            Dispose(false);
+        }
+
         public void Dispose()
         {
-            Stop();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+                Stop();
             _input?.Dispose();
             _output?.Dispose();
             _whaitHandle?.Dispose();
-            GC.SuppressFinalize(this);
+            _whaitMemoryHandle?.Dispose();
         }
 
         public event Message ShowMessage;
@@ -49,20 +61,14 @@ namespace GZip
 
                 try
                 {
-                    _input = new FileStream(_parameters.InputFileName, FileMode.Open);
+                    _input = new FileStream(_parameters.InputFileName, FileMode.Open, FileAccess.Read);
                     _output = new FileStream(_parameters.OutputFileName, FileMode.CreateNew);
 
-                    switch (_parameters.Operation)
+                    _zip = SelectOperationType(_parameters.Operation, _input, _output, _parameters.BlockLength);
+                    if (_zip == null)
                     {
-                        case Parameters.OperationType.COMPRESS:
-                            _zip = new GZipCompress(_input, _output, _parameters.BlockLength, 0);
-                            break;
-                        case Parameters.OperationType.DECOMPRESS:
-                            _zip = new GZipDecompress(_input, _output);
-                            break;
-                        default:
-                            OnShowMessage(new MessageEventArgs(Resources.UnknownOperation));
-                            return false;
+                        OnShowMessage(new MessageEventArgs(Resources.UnknownOperation));
+                        return false;
                     }
 
                     _queueInput = new SimpleThreadSafeQueue<Frame>();
@@ -104,9 +110,9 @@ namespace GZip
                     return;
                 }
 
+                _output.Flush();
                 _zip.Cancel();
                 _whaitMemoryHandle.Set();
-                _output.Flush();
 
                 foreach (var workThread in _workThreads)
                     if (workThread.IsAlive)
@@ -196,9 +202,22 @@ namespace GZip
                 }
             }
         }
+
+        private static IGZip SelectOperationType(Parameters.OperationType operation, Stream read, Stream write, int blockLength)
+        {
+            switch (operation)
+            {
+                case Parameters.OperationType.COMPRESS:
+                    return new GZipCompress(read, write, blockLength, 0);
+                case Parameters.OperationType.DECOMPRESS:
+                    return new GZipDecompress(read, write);
+                default:
+                    return null;
+            }
+        }
     }
 
-    public delegate void Message(object sender, MessageEventArgs args);
+    public delegate void Message(object sender, MessageEventArgs e);
 
     public class MessageEventArgs : EventArgs
     {
@@ -250,17 +269,24 @@ namespace GZip
 
         public Frame Process(Frame frame)
         {
-            using (var memoryStream = new MemoryStream())
+            byte[] data;
+            MemoryStream memoryStream = null;
+            try
             {
+                memoryStream = new MemoryStream();
                 using (var stream = new GZipStream(memoryStream, CompressionMode.Compress))
                 {
                     stream.Write(frame.Data, 0, frame.Data.Length);
                 }
-
-                var data = memoryStream.ToArray();
-                return new Frame(
-                    new FrameHeader(frame.Header.HeaderId, frame.Header.Id, frame.Header.Position, data.Length), data);
+                data = memoryStream.ToArray();
             }
+            finally
+            {
+                memoryStream?.Dispose();
+            }
+
+            var header = new FrameHeader(frame.Header.HeaderId, frame.Header.Id, frame.Header.Position, data.Length);
+            return new Frame(header, data);
         }
 
         public void Write(Frame frame)
@@ -274,7 +300,7 @@ namespace GZip
             {
                 if (ReadFramesCount >= FramesCount)
                     break;
-                int needToRead = (int) (((_streamToRead.Length - _streamToRead.Position) > _frameLength)
+                var needToRead = (int) (((_streamToRead.Length - _streamToRead.Position) > _frameLength)
                     ? _frameLength
                     : _streamToRead.Length - _streamToRead.Position);
                 yield return FrameHelper.CreateUncompressedFrameFromStream(_streamToRead, needToRead, _headerId, ReadFramesCount++);
@@ -303,21 +329,27 @@ namespace GZip
 
         public Frame Process(Frame frame)
         {
-            using (var memoryCompressedStream = new MemoryStream(frame.Data))
+            byte[] data;
+            MemoryStream memoryCompressedStream = null;
+            MemoryStream memoryDecompressedStream = null;
+            try
             {
-                using (var memoryDecompressedStream = new MemoryStream())
+                memoryCompressedStream = new MemoryStream(frame.Data);
+                memoryDecompressedStream = new MemoryStream();
+                using (var stream = new GZipStream(memoryCompressedStream, CompressionMode.Decompress))
                 {
-                    using (var stream = new GZipStream(memoryCompressedStream, CompressionMode.Decompress))
-                    {
-                        stream.CopyTo(memoryDecompressedStream);
-                    }
-
-                    var data = memoryDecompressedStream.ToArray();
-                    return new Frame(
-                        new FrameHeader(frame.Header.HeaderId, frame.Header.Id, frame.Header.Position, data.Length),
-                        data);
+                    stream.CopyTo(memoryDecompressedStream);
                 }
+                data = memoryDecompressedStream.ToArray();
             }
+            finally
+            {
+                memoryCompressedStream?.Dispose();
+                memoryDecompressedStream?.Dispose();
+            }
+
+            var header = new FrameHeader(frame.Header.HeaderId, frame.Header.Id, frame.Header.Position, data.Length);
+            return new Frame(header, data);
         }
 
         public void Write(Frame frame)
