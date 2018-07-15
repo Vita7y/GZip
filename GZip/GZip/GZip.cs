@@ -62,6 +62,11 @@ namespace GZip
                 try
                 {
                     _input = new FileStream(_parameters.InputFileName, FileMode.Open, FileAccess.Read);
+                    if (_input.Length == 0)
+                    {
+                        OnShowMessage(new MessageEventArgs(Resources.InputFileIsEmpty));
+                        return false;
+                    }
                     _output = new FileStream(_parameters.OutputFileName, FileMode.CreateNew);
 
                     _zip = SelectOperationType(_parameters.Operation, _input, _output, _parameters.BlockLength);
@@ -93,6 +98,7 @@ namespace GZip
                 catch (Exception e)
                 {
                     OnShowMessage(new MessageEventArgs(e.Message));
+                    _whaitHandle?.Set();
                 }
 
                 return false;
@@ -103,23 +109,30 @@ namespace GZip
         {
             lock (_locker)
             {
-                if (_workThreads == null)
+                try
                 {
+                    if (_workThreads == null)
+                    {
+                        _whaitHandle?.Set();
+                        OnShowMessage(new MessageEventArgs(Resources.OperationIsNotStarted));
+                        return;
+                    }
+
+                    _output.Flush();
+                    _zip.Cancel();
+                    _whaitMemoryHandle.Set();
+
+                    foreach (var workThread in _workThreads)
+                        if (workThread.IsAlive)
+                            workThread.Abort();
+
+                    OnShowMessage(new MessageEventArgs(Resources.WorkIsDone));
                     _whaitHandle?.Set();
-                    OnShowMessage(new MessageEventArgs(Resources.OperationIsNotStarted));
-                    return;
                 }
-
-                _output.Flush();
-                _zip.Cancel();
-                _whaitMemoryHandle.Set();
-
-                foreach (var workThread in _workThreads)
-                    if (workThread.IsAlive)
-                        workThread.Abort();
-
-                OnShowMessage(new MessageEventArgs(Resources.WorkIsDone));
-                _whaitHandle?.Set();
+                catch (Exception e)
+                {
+                    OnShowMessage(new MessageEventArgs(e.Message));
+                }
             }
         }
 
@@ -146,21 +159,6 @@ namespace GZip
             return freeMemry > minLevelMemory;
         }
 
-        private void ProcessWork()
-        {
-            while (true)
-            {
-                var frame = _queueInput.Dequeue();
-                if (frame.Data == null)
-                {
-                    _queueInput.Enqueue(frame);
-                    return;
-                }
-
-                _queueOutput.Enqueue(_zip.Process(frame));
-            }
-        }
-
         private void ReadWork()
         {
             if (!IsMemoryEnough())
@@ -172,34 +170,60 @@ namespace GZip
                 return;
             }
 
-            foreach (var frame in _zip.Read())
+            try
             {
-                if (!IsMemoryEnough())
-                    _whaitMemoryHandle.WaitOne();
-                _queueInput.Enqueue(frame);
+                foreach (var frame in _zip.Read())
+                {
+                    if (!IsMemoryEnough())
+                        _whaitMemoryHandle.WaitOne();
+                    _queueInput.Enqueue(frame);
+                }
             }
+            catch (Exception e)
+            {
+                OnShowMessage(new MessageEventArgs(e.Message));
+                _queueInput.Enqueue(default(Frame));
+            }
+        }
 
-            _queueInput.Enqueue(default(Frame));
+        private void ProcessWork()
+        {
+            while (true)
+            {
+                var frame = _queueInput.Dequeue();
+                if (frame.Data == null)
+                {
+                    _queueInput.Enqueue(frame);
+                    return;
+                }
+                _queueOutput.Enqueue(_zip.Process(frame));
+            }
         }
 
         private void WriteWork()
         {
             var writeFrameCount = 0;
-            while (true)
+            try
             {
-                var frame = _queueOutput.Dequeue();
-                _zip.Write(frame);
-                writeFrameCount++;
-                if (writeFrameCount == _zip.FramesCount)
+                while (true)
                 {
-                    _whaitHandle.Set();
-                    return;
-                }
+                    var frame = _queueOutput.Dequeue();
+                    _zip.Write(frame);
+                    writeFrameCount++;
+                    if (writeFrameCount == _zip.FramesCount)
+                        return;
 
-                if (IsMemoryEnough())
-                {
-                    _whaitMemoryHandle.Set();
+                    if (IsMemoryEnough())
+                        _whaitMemoryHandle.Set();
                 }
+            }
+            catch (Exception e)
+            {
+                OnShowMessage(new MessageEventArgs(e.Message));
+            }
+            finally
+            {
+                _whaitHandle.Set();
             }
         }
 

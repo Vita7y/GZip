@@ -141,6 +141,9 @@
   <data name="ErrorSecondArg" xml:space="preserve">
     <value>No source file name was specified.</value>
   </data>
+  <data name="InputFileIsEmpty" xml:space="preserve">
+    <value>Input file is empty</value>
+  </data>
   <data name="OperationCancelling" xml:space="preserve">
     <value>Opertion is cancelling</value>
   </data>

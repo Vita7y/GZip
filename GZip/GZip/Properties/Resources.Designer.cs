@@ -133,6 +133,15 @@ namespace GZip.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Input file is empty.
+        /// </summary>
+        internal static string InputFileIsEmpty {
+            get {
+                return ResourceManager.GetString("InputFileIsEmpty", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Opertion is cancelling.
         /// </summary>
         internal static string OperationCancelling {
