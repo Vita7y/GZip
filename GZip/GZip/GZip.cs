@@ -80,15 +80,15 @@ namespace GZip
                     _queueOutput = new SimpleThreadSafeQueue<Frame>();
 
                     _workThreads = new Thread[_parameters.CountOfThreads + 2];
-                    _workThreads[0] = new Thread(ReadWork);
-                    _workThreads[1] = new Thread(WriteWork);
+                    _workThreads[0] = new Thread(ReadWork) {Name = "ReadDataThread"};
+                    _workThreads[1] = new Thread(WriteWork) {Name = "WriteDataThread"};
 
                     _whaitHandle = new AutoResetEvent(false);
                     _whaitMemoryHandle = new AutoResetEvent(false);
                     for (var i = 0; i < _workThreads.Length; i++)
                     {
                         if (_workThreads[i] == null)
-                            _workThreads[i] = new Thread(ProcessWork);
+                            _workThreads[i] = new Thread(ProcessWork) {Name = "WorkThread" + i};
                         _workThreads[i].Start();
                     }
 
@@ -177,6 +177,7 @@ namespace GZip
                     if (!IsMemoryEnough())
                         _whaitMemoryHandle.WaitOne();
                     _queueInput.Enqueue(frame);
+                    OnShowMessage(new MessageEventArgs($"Statistics: Count element in input queue {_queueInput.Count}, in output queue {_queueOutput.Count}"));
                 }
             }
             catch (Exception e)
@@ -188,15 +189,23 @@ namespace GZip
 
         private void ProcessWork()
         {
-            while (true)
+            try
             {
-                var frame = _queueInput.Dequeue();
-                if (frame.Data == null)
+                while (true)
                 {
-                    _queueInput.Enqueue(frame);
-                    return;
+                    var frame = _queueInput.Dequeue();
+                    if (frame.Data == null)
+                    {
+                        _queueInput.Enqueue(frame);
+                        return;
+                    }
+                    _queueOutput.Enqueue(_zip.Process(frame));
                 }
-                _queueOutput.Enqueue(_zip.Process(frame));
+            }
+            catch (Exception e)
+            {
+                OnShowMessage(new MessageEventArgs(e.Message));
+                _queueInput.Enqueue(default(Frame));
             }
         }
 
@@ -212,7 +221,6 @@ namespace GZip
                     writeFrameCount++;
                     if (writeFrameCount == _zip.FramesCount)
                         return;
-
                     if (IsMemoryEnough())
                         _whaitMemoryHandle.Set();
                 }

@@ -16,7 +16,7 @@ namespace GZip
         public Tuple<ResultType, string> ParameterValidationAndSetup(string[] args)
         {
             if (args.Length == 0 
-                || args.Length != 3)
+                || args.Length < 3)
                 return new Tuple<ResultType, string>(ResultType.Error, Resources.ErrorArgsIsEmpty);
 
             Parameters.OperationType type;
