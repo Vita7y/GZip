@@ -82,7 +82,7 @@ namespace GZip
             }
             catch (Exception e)
             {
-                OnShowMessage(new MessageEventArgs($"In start: {e.Message}"));
+                OnShowMessage(new MessageEventArgs($"Error on start: {e.Message}"));
             }
         }
 
@@ -150,7 +150,7 @@ namespace GZip
             }
             catch (Exception e)
             {
-                OnShowMessage(new MessageEventArgs($"In stop: {e.Message}"));
+                OnShowMessage(new MessageEventArgs($"Error on stop: {e.Message}"));
             }
         }
 
