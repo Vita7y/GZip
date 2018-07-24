@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Threading;
@@ -10,12 +12,11 @@ namespace GZip
 {
     public class GZip : IDisposable
     {
-        private readonly object _locker = new object();
         private readonly Parameters _parameters;
         private FileStream _input;
         private FileStream _output;
-        private SimpleThreadSafeQueue<Frame> _queueInput;
-        private SimpleThreadSafeQueue<Frame> _queueOutput;
+        private BlockingCollection<Frame> _queueInput;
+        private BlockingCollection<Frame> _queueOutput;
         private EventWaitHandle _whaitHandle;
         private EventWaitHandle _whaitMemoryHandle;
         private Thread[] _workThreads;
@@ -49,94 +50,111 @@ namespace GZip
 
         public event Message ShowMessage;
 
-        public bool Start()
+        public void Start()
         {
-            lock (_locker)
+            if (_workThreads != null)
             {
-                if (_workThreads != null)
+                OnShowMessage(new MessageEventArgs(Resources.OperationWasStarted));
+                return;
+            }
+
+            try
+            {
+                if (!OpenStreams())
+                    return;
+
+                _zip = SelectOperationType(_parameters.Operation, _input, _output, _parameters.BlockLength);
+                if (_zip == null)
                 {
-                    OnShowMessage(new MessageEventArgs(Resources.OperationWasStarted));
-                    return false;
+                    OnShowMessage(new MessageEventArgs(Resources.UnknownOperation));
+                    return;
                 }
 
-                try
-                {
-                    _input = new FileStream(_parameters.InputFileName, FileMode.Open, FileAccess.Read);
-                    if (_input.Length == 0)
-                    {
-                        OnShowMessage(new MessageEventArgs(Resources.InputFileIsEmpty));
-                        return false;
-                    }
-                    _output = new FileStream(_parameters.OutputFileName, FileMode.CreateNew);
+                var workTime = new Stopwatch();
+                workTime.Start();
 
-                    _zip = SelectOperationType(_parameters.Operation, _input, _output, _parameters.BlockLength);
-                    if (_zip == null)
-                    {
-                        OnShowMessage(new MessageEventArgs(Resources.UnknownOperation));
-                        return false;
-                    }
+                CreateWorkThreads();
+                OnShowMessage(new MessageEventArgs(Resources.OperationWasStarted));
+                WhaitToEnd();
 
-                    _queueInput = new SimpleThreadSafeQueue<Frame>();
-                    _queueOutput = new SimpleThreadSafeQueue<Frame>();
+                workTime.Stop();
+                ShowWorkInfo(workTime);
+            }
+            catch (Exception e)
+            {
+                OnShowMessage(new MessageEventArgs($"In start: {e.Message}"));
+            }
+        }
 
-                    _workThreads = new Thread[_parameters.CountOfThreads + 2];
-                    _workThreads[0] = new Thread(ReadWork) {Name = "ReadDataThread"};
-                    _workThreads[1] = new Thread(WriteWork) {Name = "WriteDataThread"};
+        private void CreateWorkThreads()
+        {
+            _workThreads = new Thread[_parameters.CountOfThreads + 2];
+            _workThreads[0] = new Thread(ReadWork) {Name = "ReadDataThread"};
+            _workThreads[1] = new Thread(WriteWork) {Name = "WriteDataThread"};
 
-                    _whaitHandle = new AutoResetEvent(false);
-                    _whaitMemoryHandle = new AutoResetEvent(false);
-                    for (var i = 0; i < _workThreads.Length; i++)
-                    {
-                        if (_workThreads[i] == null)
-                            _workThreads[i] = new Thread(ProcessWork) {Name = "WorkThread" + i};
-                        _workThreads[i].Start();
-                    }
+            _queueInput = new BlockingCollection<Frame>(new ConcurrentQueue<Frame>(), _workThreads.Length);
+            _queueOutput = new BlockingCollection<Frame>(new ConcurrentQueue<Frame>(), _workThreads.Length);
 
-                    OnShowMessage(new MessageEventArgs(Resources.OperationWasStarted));
-                    return true;
-                }
-                catch (Exception e)
-                {
-                    OnShowMessage(new MessageEventArgs(e.Message));
-                    _whaitHandle?.Set();
-                }
+            _whaitHandle = new AutoResetEvent(false);
+            _whaitMemoryHandle = new AutoResetEvent(false);
 
+            for (var i = 0; i < _workThreads.Length; i++)
+            {
+                if (_workThreads[i] == null)
+                    _workThreads[i] = new Thread(ProcessWork) {Name = "WorkThread" + i};
+                _workThreads[i].Start();
+            }
+        }
+
+        private void ShowWorkInfo(Stopwatch workTime)
+        {
+            if (_zip.ReadFramesCount == _zip.FramesCount)
+            {
+                OnShowMessage(new MessageEventArgs(Resources.WorkIsDone));
+                OnShowMessage(new MessageEventArgs("Input file            :" + _parameters.InputFileName));
+                OnShowMessage(new MessageEventArgs("Output file           :" + _parameters.OutputFileName));
+                OnShowMessage(new MessageEventArgs("Executed operation    :" + _parameters.Operation));
+                OnShowMessage(new MessageEventArgs("Count of work threads :" + _parameters.CountOfThreads));
+                OnShowMessage(new MessageEventArgs("Work time             :" + workTime.Elapsed));
+            }
+        }
+
+        private bool OpenStreams()
+        {
+            _input = new FileStream(_parameters.InputFileName, FileMode.Open, FileAccess.Read);
+            if (_input.Length == 0)
+            {
+                OnShowMessage(new MessageEventArgs(Resources.InputFileIsEmpty));
                 return false;
             }
+
+            _output = new FileStream(_parameters.OutputFileName, FileMode.CreateNew);
+            return true;
         }
 
         public void Stop()
         {
-            lock (_locker)
+            try
             {
-                try
+                if (_workThreads == null)
                 {
-                    if (_workThreads == null)
-                    {
-                        _whaitHandle?.Set();
-                        OnShowMessage(new MessageEventArgs(Resources.OperationIsNotStarted));
-                        return;
-                    }
-
-                    _output.Flush();
-                    _zip.Cancel();
-                    _whaitMemoryHandle.Set();
-
-                    foreach (var workThread in _workThreads)
-                        if (workThread.IsAlive)
-                            workThread.Abort();
-
-                    OnShowMessage(new MessageEventArgs(Resources.WorkIsDone));
-                    _whaitHandle?.Set();
+                    OnShowMessage(new MessageEventArgs(Resources.OperationIsNotStarted));
+                    return;
                 }
-                catch (Exception e)
-                {
-                    OnShowMessage(new MessageEventArgs(e.Message));
-                }
+
+                _queueInput?.CompleteAdding();
+                _queueOutput?.CompleteAdding();
+                _whaitMemoryHandle?.Set();
+                _output?.Flush();
+                _zip?.Cancel();
+            }
+            catch (Exception e)
+            {
+                OnShowMessage(new MessageEventArgs($"In stop: {e.Message}"));
             }
         }
 
-        public void WhaitToEnd()
+        private void WhaitToEnd()
         {
             _whaitHandle?.WaitOne();
         }
@@ -164,7 +182,7 @@ namespace GZip
             if (!IsMemoryEnough())
             {
                 _zip.Cancel();
-                _queueInput.Enqueue(default(Frame));
+                _queueInput.Add(default(Frame));
                 OnShowMessage(new MessageEventArgs(Resources.ErrorMemoryNotEnough));
                 OnShowMessage(new MessageEventArgs(Resources.OperationWasStopped));
                 return;
@@ -176,15 +194,20 @@ namespace GZip
                 {
                     if (!IsMemoryEnough())
                         _whaitMemoryHandle.WaitOne();
-                    _queueInput.Enqueue(frame);
-                    OnShowMessage(new MessageEventArgs($"Statistics: Count element in input queue {_queueInput.Count}, in output queue {_queueOutput.Count}"));
+                    if (_queueInput.IsCompleted)
+                        return;
+                    _queueInput.Add(frame);
                 }
+            }
+            catch (InvalidOperationException ioe)
+            {
+                OnShowMessage(new MessageEventArgs($"Process {Thread.CurrentThread.Name} was stopped."));
             }
             catch (Exception e)
             {
-                OnShowMessage(new MessageEventArgs(e.Message));
-                _queueInput.Enqueue(default(Frame));
+                OnShowMessage(new MessageEventArgs($"Error on read: {e.Message}"));
             }
+            _queueInput.CompleteAdding();
         }
 
         private void ProcessWork()
@@ -193,19 +216,19 @@ namespace GZip
             {
                 while (true)
                 {
-                    var frame = _queueInput.Dequeue();
-                    if (frame.Data == null)
-                    {
-                        _queueInput.Enqueue(frame);
+                    Frame frame;
+                    if (!_queueInput.TryTake(out frame, Timeout.Infinite))
                         return;
-                    }
-                    _queueOutput.Enqueue(_zip.Process(frame));
+                    _queueOutput.Add(_zip.Process(frame));
                 }
+            }
+            catch (InvalidOperationException ioe)
+            {
+                OnShowMessage(new MessageEventArgs($"Work process {Thread.CurrentThread.Name} was stopped."));
             }
             catch (Exception e)
             {
-                OnShowMessage(new MessageEventArgs(e.Message));
-                _queueInput.Enqueue(default(Frame));
+                OnShowMessage(new MessageEventArgs($"Error in process {Thread.CurrentThread.Name}: {e.Message}"));
             }
         }
 
@@ -216,22 +239,30 @@ namespace GZip
             {
                 while (true)
                 {
-                    var frame = _queueOutput.Dequeue();
+                    Frame frame;
+                    if (!_queueOutput.TryTake(out frame, Timeout.Infinite))
+                        return;
                     _zip.Write(frame);
                     writeFrameCount++;
+
                     if (writeFrameCount == _zip.FramesCount)
+                    {
+                        _queueOutput.CompleteAdding();
                         return;
-                    if (IsMemoryEnough())
-                        _whaitMemoryHandle.Set();
+                    }
                 }
+            }
+            catch (InvalidOperationException ioe)
+            {
+                OnShowMessage(new MessageEventArgs($"Process {Thread.CurrentThread.Name} was stopped."));
             }
             catch (Exception e)
             {
-                OnShowMessage(new MessageEventArgs(e.Message));
+                OnShowMessage(new MessageEventArgs($"Error on write: {e.Message}"));
             }
             finally
             {
-                _whaitHandle.Set();
+                _whaitHandle?.Set();
             }
         }
 

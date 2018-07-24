@@ -61,6 +61,15 @@ namespace GZip.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Abort thread name: .
+        /// </summary>
+        internal static string AbortThread {
+            get {
+                return ResourceManager.GetString("AbortThread", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Please enter arguments up to the following pattern: [compress/decompress] [Source file] [Destination file].
         /// </summary>
         internal static string ErrorArgsIsEmpty {
@@ -97,7 +106,7 @@ namespace GZip.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Memory not enough.
+        ///   Looks up a localized string similar to Memory not enough!.
         /// </summary>
         internal static string ErrorMemoryNotEnough {
             get {
@@ -133,7 +142,7 @@ namespace GZip.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Input file is empty.
+        ///   Looks up a localized string similar to Input file is empty!.
         /// </summary>
         internal static string InputFileIsEmpty {
             get {
@@ -142,7 +151,7 @@ namespace GZip.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Opertion is cancelling.
+        ///   Looks up a localized string similar to Opertion was cancelling!.
         /// </summary>
         internal static string OperationCancelling {
             get {
@@ -151,7 +160,7 @@ namespace GZip.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Operation is not started.
+        ///   Looks up a localized string similar to Operation was not started!.
         /// </summary>
         internal static string OperationIsNotStarted {
             get {
@@ -160,7 +169,7 @@ namespace GZip.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to File processing was started.
+        ///   Looks up a localized string similar to File processing was started....
         /// </summary>
         internal static string OperationWasStarted {
             get {
@@ -169,7 +178,7 @@ namespace GZip.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Operation was stopped.
+        ///   Looks up a localized string similar to Operation was stopped!.
         /// </summary>
         internal static string OperationWasStopped {
             get {
@@ -187,7 +196,7 @@ namespace GZip.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The type of operation is not set.
+        ///   Looks up a localized string similar to The type of operation is not set..
         /// </summary>
         internal static string UnknownOperation {
             get {
@@ -196,7 +205,7 @@ namespace GZip.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Work is done.
+        ///   Looks up a localized string similar to Work is done!.
         /// </summary>
         internal static string WorkIsDone {
             get {

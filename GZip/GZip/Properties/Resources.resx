@@ -117,6 +117,9 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="AbortThread" xml:space="preserve">
+    <value>Abort thread name: </value>
+  </data>
   <data name="ErrorArgsIsEmpty" xml:space="preserve">
     <value>Please enter arguments up to the following pattern: [compress/decompress] [Source file] [Destination file]</value>
   </data>
@@ -130,7 +133,7 @@
     <value>Source and destination files shall be different.</value>
   </data>
   <data name="ErrorMemoryNotEnough" xml:space="preserve">
-    <value>Memory not enough</value>
+    <value>Memory not enough!</value>
   </data>
   <data name="ErrorOutputFileExist" xml:space="preserve">
     <value>Destination file already exists. Please indicate the different file name.</value>
@@ -142,27 +145,27 @@
     <value>No source file name was specified.</value>
   </data>
   <data name="InputFileIsEmpty" xml:space="preserve">
-    <value>Input file is empty</value>
+    <value>Input file is empty!</value>
   </data>
   <data name="OperationCancelling" xml:space="preserve">
-    <value>Opertion is cancelling</value>
+    <value>Opertion was cancelling!</value>
   </data>
   <data name="OperationIsNotStarted" xml:space="preserve">
-    <value>Operation is not started</value>
+    <value>Operation was not started!</value>
   </data>
   <data name="OperationWasStarted" xml:space="preserve">
-    <value>File processing was started</value>
+    <value>File processing was started...</value>
   </data>
   <data name="OperationWasStopped" xml:space="preserve">
-    <value>Operation was stopped</value>
+    <value>Operation was stopped!</value>
   </data>
   <data name="ParameterInstalled" xml:space="preserve">
     <value>Validation passed.</value>
   </data>
   <data name="UnknownOperation" xml:space="preserve">
-    <value>The type of operation is not set</value>
+    <value>The type of operation is not set.</value>
   </data>
   <data name="WorkIsDone" xml:space="preserve">
-    <value>Work is done</value>
+    <value>Work is done!</value>
   </data>
 </root>

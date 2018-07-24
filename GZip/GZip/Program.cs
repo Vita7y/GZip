@@ -19,12 +19,11 @@ namespace GZip
                 return;
             }
 
+            Console.CancelKeyPress += CancelKeyPress;
             using (_compressor = new GZip(parameters))
             {
-                Console.CancelKeyPress += CancelKeyPress;
                 _compressor.ShowMessage += OnShowMessage;
-                if (_compressor.Start())
-                    _compressor.WhaitToEnd();
+                _compressor.Start();
             }
         }
 
